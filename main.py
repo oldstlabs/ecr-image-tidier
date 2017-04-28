@@ -1,8 +1,9 @@
+import os
 import re
 
 import boto3
 
-REGISTRY_ID = ''
+REGISTRY_ID = os.getenv('REGISTRY_ID', None)
 
 
 def get_all_repositories(ecr):
@@ -50,39 +51,43 @@ def get_all_images(ecr, repo_name):
 
 
 def tidy_images(event, context):
-    # Create an ecr client
-    ecr = boto3.client('ecr')
 
-    for repo in get_all_repositories(ecr):
-        to_delete = []
-        images = get_all_images(ecr, repo['repositoryName'])
-        # We only care about the repos that are getting crazy big
-        if len(images) > 100:
-            print('%s has more than 100 images' % repo['repositoryName'])
-            # Sort and reverse so the newest are first
-            sorted_images = list(reversed(sorted(images, key=lambda x: x['imagePushedAt'])))
-            # Keep the top 100
-            for image in sorted_images[100:]:
-                for tag in image.get('imageTags', []):
-                    if tag == 'latest':  # i.e. this is on live
-                        print("Saw but won't delete", image['imageTags'])
-                        break
-                    elif re.search('[a-zA-Z]', tag):  # i.e. we probably write a comment
-                        print("Saw but won't delete", image['imageTags'])
-                        break
-                else:
-                    print('Delete', image.get('imageTags'), image['imagePushedAt'])
-                    to_delete.append({
-                        'imageDigest': image['imageDigest'],
-                        'imageTags': image.get('imageTags', [])
-                    })
+    if not REGISTRY_ID:
+        print('Please configure an environment variable with your ECR registry id')
+    else:
+        # Create an ecr client
+        ecr = boto3.client('ecr')
 
-            if to_delete:
-                ecr.batch_delete_image(
-                    registryId=REGISTRY_ID,
-                    repositoryName=repo['repositoryName'],
-                    imageIds=to_delete
-                )
+        for repo in get_all_repositories(ecr):
+            to_delete = []
+            images = get_all_images(ecr, repo['repositoryName'])
+            # We only care about the repos that are getting crazy big
+            if len(images) > 100:
+                print('%s has more than 100 images' % repo['repositoryName'])
+                # Sort and reverse so the newest are first
+                sorted_images = list(reversed(sorted(images, key=lambda x: x['imagePushedAt'])))
+                # Keep the top 100
+                for image in sorted_images[100:]:
+                    for tag in image.get('imageTags', []):
+                        if tag == 'latest':  # i.e. this is on live
+                            print("Saw but won't delete", image['imageTags'])
+                            break
+                        elif re.search('[a-zA-Z]', tag):  # i.e. we probably write a comment
+                            print("Saw but won't delete", image['imageTags'])
+                            break
+                    else:
+                        print('Delete', image.get('imageTags'), image['imagePushedAt'])
+                        to_delete.append({
+                            'imageDigest': image['imageDigest'],
+                            'imageTags': image.get('imageTags', [])
+                        })
+
+                if to_delete:
+                    ecr.batch_delete_image(
+                        registryId=REGISTRY_ID,
+                        repositoryName=repo['repositoryName'],
+                        imageIds=to_delete
+                    )
 
 
 if __name__ == '__main__':
