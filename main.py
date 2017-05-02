@@ -78,16 +78,17 @@ def tidy_images(event, context):
                     else:
                         print('Delete', image.get('imageTags'), image['imagePushedAt'])
                         to_delete.append({
-                            'imageDigest': image['imageDigest'],
-                            'imageTags': image.get('imageTags', [])
+                            'imageDigest': image['imageDigest']
                         })
 
                 if to_delete:
-                    ecr.batch_delete_image(
-                        registryId=REGISTRY_ID,
-                        repositoryName=repo['repositoryName'],
-                        imageIds=to_delete
-                    )
+                    # Batch delete only takes 100 at a time
+                    for i in range(0, len(to_delete), 100):
+                        ecr.batch_delete_image(
+                            registryId=REGISTRY_ID,
+                            repositoryName=repo['repositoryName'],
+                            imageIds=to_delete[i:i+100]
+                        )
 
 
 if __name__ == '__main__':
