@@ -1,4 +1,4 @@
-# ECR Image Tidyer
+# ECR Image Tidier
 
 A quick script designed to clean up your AWS ECR Repositories. These can only store 1000 images by default and they all cost money, and if you have a CI system like ours you quickly end up hitting that limit.
 
@@ -9,5 +9,3 @@ Designed to run on AWS Lambda with Python 3.6. There's no need for any extra mod
 Simply set the `REGISTRY_ID` environment variable to that for your registry, and make sure it runs with a role with the appropriate permissions (`ecr:DescribeRepositories`, `ecr:DescribeImages`, `ecr:BatchDeleteImages`). If you're not too sure on how to add specific permissions to an IAM role, you can create a new one with the `AWSLambdaFullAccess` and `AmazonEC2ContainerRegistryFullAccess` policies, and this will work (but means it has more access than strictly necessary)
 
 We run once a week to ensure we aren't holding too many images, but also to not delete any that people might still want to use.
-
-(Tidyer as in something that tidies. Not tidier, which is what you end up with your ECR Repos being)
